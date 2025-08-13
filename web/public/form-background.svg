@@ -1,0 +1,7 @@
+<svg width="100%" height="100%" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg" style="background:#f4fff8;">
+  <rect width="600" height="400" fill="#e6f2e6"/>
+  <path d="M60 250 Q80 200 100 250 T140 250" stroke="#a3d090" stroke-width="4" fill="transparent"/>
+  <circle cx="300" cy="200" r="60" fill="#cce6cc" opacity="0.6"/>
+  <ellipse cx="450" cy="150" rx="120" ry="60" fill="#b4d3b4" opacity="0.5"/>
+  <!-- Puedes agregar más formas o patrones sutiles -->
+</svg>

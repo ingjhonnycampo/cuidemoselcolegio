@@ -1,0 +1,9 @@
+<svg width="100%" height="100%" preserveAspectRatio="xMidYMid slice" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" style="background:#a1d99b;">
+  <circle cx="100" cy="100" r="3" fill="#539165" opacity="0.3"/>
+  <circle cx="200" cy="150" r="4" fill="#3d6f3a" opacity="0.2"/>
+  <circle cx="400" cy="300" r="5" fill="#497d41" opacity="0.15"/>
+  <circle cx="600" cy="100" r="2" fill="#6bbb45" opacity="0.25"/>
+  <circle cx="700" cy="400" r="3" fill="#4e8e4b" opacity="0.3"/>
+  <circle cx="300" cy="500" r="6" fill="#538b4a" opacity="0.12"/>
+  <!-- Agrega más círculos o animación si deseas -->
+</svg>
