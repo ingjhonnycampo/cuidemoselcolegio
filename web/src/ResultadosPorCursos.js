@@ -1,7 +1,43 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "./api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+
+// -- ICONOS SVG --
+const IconLogout = ({ style = {} }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={25}
+    height={25}
+    aria-hidden="true"
+    style={{
+      verticalAlign: "middle",
+      fill: "#f44336",
+      cursor: "pointer",
+      ...style,
+    }}
+  >
+    <circle cx="12" cy="12" r="12" fill="none" />
+    <g>
+      <circle cx="12" cy="12" r="11" fill="none" />
+      <g>
+        <circle cx="12" cy="7.5" r="4.5" fill="#e0f7fa" />
+        <path d="M12 21c-5 0-8-2.5-8-5.7C4 13.3 7 12 12 12s8 1.3 8 3.3C20 18.5 17 21 12 21z" fill="#e0f7fa" />
+      </g>
+    </g>
+    <g>
+      <path d="M16 13v-2H7.83l1.58-1.59L8 8l-4 4 4 4 1.41-1.41L7.83 13z" fill="none" stroke="#f44336" strokeWidth="2" />
+    </g>
+  </svg>
+);
+const IconLista = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ marginRight: 10, verticalAlign: "middle" }} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" stroke="#4eac6d" strokeWidth="2" />
+    <path d="M8 12h8M8 16h5M8 8h8" stroke="#4eac6d" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
 
 const Medal = ({ type }) => {
   const colors = {
@@ -10,96 +46,21 @@ const Medal = ({ type }) => {
     bronce: "#cd7f32",
   };
   return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 24 24"
-      fill={colors[type] || "#999"}
-      aria-hidden="true"
-      style={{ marginLeft: 4, verticalAlign: "bottom" }}
-    >
+    <svg width={14} height={14} viewBox="0 0 24 24" fill={colors[type] || "#999"} aria-hidden="true"
+      style={{ marginLeft: 4, verticalAlign: "bottom" }}>
       <circle cx={12} cy={12} r={10} stroke="#444" strokeWidth={1} />
-      <path
-        d="M7 14l3-3 2 2 5-5"
-        stroke="#444"
-        strokeWidth={2}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M7 14l3-3 2 2 5-5" stroke="#444" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 };
 
 function darMedalla(position) {
-  if (position === 1)
-    return (
-      <span
-        style={{
-          fontWeight: 600,
-          color: "#DAA520",
-          whiteSpace: "nowrap",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 11,
-          justifyContent: "center",
-        }}
-      >
-        {position} <Medal type="oro" />
-      </span>
-    );
-  if (position === 2)
-    return (
-      <span
-        style={{
-          fontWeight: 600,
-          color: "#c0c0c0",
-          whiteSpace: "nowrap",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 11,
-          justifyContent: "center",
-        }}
-      >
-        {position} <Medal type="plata" />
-      </span>
-    );
-  if (position === 3)
-    return (
-      <span
-        style={{
-          fontWeight: 600,
-          color: "#CD7F32",
-          whiteSpace: "nowrap",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          fontSize: 11,
-          justifyContent: "center",
-        }}
-      >
-        {position} <Medal type="bronce" />
-      </span>
-    );
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        whiteSpace: "nowrap",
-        fontWeight: 600,
-        textAlign: "center",
-        display: "inline-block",
-        minWidth: 16,
-      }}
-    >
-      {position}.
-    </span>
-  );
+  if (position === 1) return (<span style={{ fontWeight: 600, color: "#DAA520", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, justifyContent: "center" }}>{position} <Medal type="oro" /></span>);
+  if (position === 2) return (<span style={{ fontWeight: 600, color: "#c0c0c0", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, justifyContent: "center" }}>{position} <Medal type="plata" /></span>);
+  if (position === 3) return (<span style={{ fontWeight: 600, color: "#CD7F32", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, justifyContent: "center" }}>{position} <Medal type="bronce" /></span>);
+  return (<span style={{ fontSize: 11, whiteSpace: "nowrap", fontWeight: 600, textAlign: "center", display: "inline-block", minWidth: 16 }}>{position}.</span>);
 }
 
-// Función para capitalizar primera letra de cada palabra
 function titleCase(str) {
   return str
     .toLowerCase()
@@ -109,64 +70,240 @@ function titleCase(str) {
     .join(" ");
 }
 
-const coloresRetos = ["#d7efd9", "#c5e1a5"]; // tonos verde claro suaves
+const coloresRetos = ["#d7efd9", "#c5e1a5"];
 const colorFondoAzul = "#1e40af";
 const colorTextoBlanco = "white";
 
+const spinnerStyles = {
+  spinnerContainer: {
+    minHeight: "100vh",
+    width: "100vw",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "rgba(255,255,255,0.85)",
+    zIndex: 99,
+  },
+  loadingText: {
+    fontWeight: 700,
+    color: "#267d53",
+    marginTop: 18,
+    fontSize: 22,
+    fontFamily: "Segoe UI, Arial, sans-serif",
+  },
+};
+
+const ModalConfirm = ({ visible, onClose, onConfirm }) => {
+  if (!visible) return null;
+  return (
+    <div style={modalStyles.backdrop} role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+      <div style={modalStyles.modal}>
+        <h2 id="modalTitle" style={modalStyles.title}>Cerrar sesión</h2>
+        <p id="modalDesc" style={modalStyles.description}>¿Seguro que deseas cerrar tu sesión?</p>
+        <div style={modalStyles.buttons}>
+          <button style={modalStyles.btnConfirm} onClick={onConfirm}>Sí, cerrar sesión</button>
+          <button style={modalStyles.btnCancel} onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+const modalStyles = {
+  backdrop: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10000,
+  },
+  modal: {
+    background: "#fff",
+    borderRadius: 12,
+    padding: 30,
+    maxWidth: 380,
+    width: "90%",
+    boxShadow: "0 8px 28px rgba(0,0,0,0.25)",
+    textAlign: "center",
+  },
+  title: {
+    marginBottom: 12,
+    color: "#2e7d32",
+  },
+  description: {
+    marginBottom: 20,
+    fontSize: 16,
+    color: "#444",
+  },
+  buttons: {
+    display: "flex",
+    justifyContent: "space-around",
+  },
+  btnConfirm: {
+    backgroundColor: "#2e7d32",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "10px 20px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  btnCancel: {
+    backgroundColor: "#ccc",
+    color: "#333",
+    border: "none",
+    borderRadius: 8,
+    padding: "10px 20px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+};
+
+const barraStyles = {
+  container: {
+    width: "100%",
+    margin: "0 0 32px 0",
+    padding: "0 30px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "linear-gradient(90deg, #d1f6fa 40%, #fefbe2 100%)",
+    borderRadius: 26,
+    boxShadow: "0 1.5px 6px rgba(70,180,190,0.11)",
+    fontWeight: 700,
+    fontSize: 17,
+    color: "#1c6a78",
+    position: "static", // NO absolute ni fixed
+    minHeight: 48,
+    boxSizing: "border-box",
+  },
+  contentWrap: {
+    display: "flex",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  userName: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    fontWeight: 700,
+    fontSize: 17,
+    color: "#16a098",
+    padding: "14px 0",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
+  },
+  tipoUsuario: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 3,
+    color: "#f6a611",
+    fontWeight: 700,
+    fontSize: 15,
+    marginLeft: 3,
+    letterSpacing: ".02em",
+    fontStyle: "italic",
+    whiteSpace: "nowrap"
+  },
+  logoutBtn: {
+    background: "none",
+    border: "none",
+    padding: 0,
+    margin: 0,
+    cursor: "pointer",
+    outline: "none",
+    height: 36,
+    width: 36,
+    marginLeft: 10,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "50%",
+    transition: "background 0.16s",
+    flex: "0 0 auto"
+  },
+};
+
+const Spinner = () => (
+  <div style={spinnerStyles.spinnerContainer} role="alert" aria-live="polite" aria-busy="true">
+    <svg width={80} height={80} viewBox="0 0 40 40" aria-hidden="true"
+      style={{ animation: "relojspin 1.8s linear infinite" }}
+    >
+      <circle cx="20" cy="20" r="18" stroke="#e0e0e0" strokeWidth="4" fill="none" />
+      <path d="M20 20V7" stroke="#267d53" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="20" cy="20" r="3.6" fill="#267d53" />
+    </svg>
+    <span style={spinnerStyles.loadingText}>Cargando...</span>
+    <style>{`
+      @keyframes relojspin {
+        0% { transform: rotate(0deg);}
+        100% { transform: rotate(360deg);}
+      }
+    `}</style>
+  </div>
+);
+
+// -------------------------
+// COMPONENTE PRINCIPAL
+// -------------------------
 export default function ResultadosPorRetos() {
   const [retos, setRetos] = useState([]);
   const [selectedRetoId, setSelectedRetoId] = useState("");
   const [ranking, setRanking] = useState([]);
   const [puntuacion, setPuntuacion] = useState([]);
   const [salonesAsignados, setSalonesAsignados] = useState([]);
-
   const [reporteHistoricoCursos, setReporteHistoricoCursos] = useState([]);
   const [cargandoHistorico, setCargandoHistorico] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const navigate = useNavigate();
   const reporteRef = useRef(null);
 
-  // Carga retos cerrados
-  useEffect(() => {
-    api
-      .get("/retos")
-      .then((res) => {
-        const retosCerrados = res.data.filter((ret) => {
-          const ahora = new Date();
-          const cierre = new Date(ret.fechaCierre + "T23:59:59");
-          return ahora > cierre;
-        });
-        setRetos(retosCerrados);
-      })
-      .catch((err) => {
-        console.error("Error al cargar retos:", err);
-      });
+  const usuario = useMemo(() => {
+    const u = localStorage.getItem("usuario");
+    return u ? JSON.parse(u) : null;
   }, []);
 
-  // Carga salones asignados al reto seleccionado
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    api.get("/retos").then((res) => {
+      const retosCerrados = res.data.filter((ret) => {
+        const ahora = new Date();
+        const cierre = new Date(ret.fechaCierre + "T23:59:59");
+        return ahora > cierre;
+      });
+      setRetos(retosCerrados);
+    }).catch((err) => {
+      console.error("Error al cargar retos:", err);
+    });
+  }, []);
+
   useEffect(() => {
     if (!selectedRetoId) {
       setSalonesAsignados([]);
       return;
     }
-    api
-      .get(`/retos/${selectedRetoId}`)
-      .then((res) => {
-        setSalonesAsignados(res.data.salonesAsignados || []);
-      })
-      .catch(() => {
-        setSalonesAsignados([]);
-      });
+    api.get(`/retos/${selectedRetoId}`)
+      .then((res) => setSalonesAsignados(res.data.salonesAsignados || []))
+      .catch(() => setSalonesAsignados([]));
   }, [selectedRetoId]);
 
-  // Carga ranking y calcula puntuación para el reto seleccionado
   useEffect(() => {
     if (!selectedRetoId) {
       setRanking([]);
       setPuntuacion([]);
       return;
     }
-    api
-      .get(`/recolecciones/reto/${selectedRetoId}`)
+    api.get(`/recolecciones/reto/${selectedRetoId}`)
       .then((res) => {
         const agrupadoPorSalon = res.data.reduce((acc, item) => {
           const salonId = (item.salonId?._id || item.salonId || item.salon || "").toString();
@@ -218,7 +355,7 @@ export default function ResultadosPorRetos() {
       });
   }, [selectedRetoId, salonesAsignados]);
 
-  // Reporte histórico general por cursos con regla corregida de puntos
+  // HISTÓRICO DESCRIPCIÓN CON AJUSTE DE DESEMPATE
   useEffect(() => {
     async function cargarHistorico() {
       setCargandoHistorico(true);
@@ -310,7 +447,7 @@ export default function ResultadosPorRetos() {
             else if (pos === 5) puntos = 5;
             else if (pos === 6) puntos = 3;
             else if (pos === 7) puntos = 1;
-            else if (item.pesoLibras > 0) puntos = 1;  // <-- Esta línea corregida
+            else if (item.pesoLibras > 0) puntos = 1;
 
             resumenCursos[item.cursoId].porReto.push({
               retoId: reto.retoId,
@@ -347,8 +484,12 @@ export default function ResultadosPorRetos() {
           });
         }
 
+        // Desempate: primero por puntos, luego por libras totales (MÁS libras primero)
         const resumenArray = Object.values(resumenCursos);
-        resumenArray.sort((a, b) => b.totalPuntos - a.totalPuntos);
+        resumenArray.sort((a, b) => {
+          if (b.totalPuntos !== a.totalPuntos) return b.totalPuntos - a.totalPuntos;
+          return b.totalLibras - a.totalLibras;
+        });
 
         setReporteHistoricoCursos(resumenArray);
       } catch (error) {
@@ -361,7 +502,6 @@ export default function ResultadosPorRetos() {
     cargarHistorico();
   }, []);
 
-  // Exportar PDF
   function exportarPDF() {
     if (!reporteRef.current) return;
     const doc = new jsPDF();
@@ -370,7 +510,6 @@ export default function ResultadosPorRetos() {
     doc.save("reporte_historico_general.pdf");
   }
 
-  // Exportar Excel (simple, basado en tabla HTML)
   function exportarExcel() {
     if (!reporteRef.current) return;
     const tablaHtml = reporteRef.current.outerHTML;
@@ -384,15 +523,50 @@ export default function ResultadosPorRetos() {
     URL.revokeObjectURL(url);
   }
 
-  // Regresar
   function regresar() {
     window.history.back();
   }
 
+  if (loading) return <Spinner />;
+
+  const nombreUsuario = usuario?.nombre || "Usuario";
+  const tipoUsuario = usuario?.tipo || usuario?.role || usuario?.perfil || "admin";
+
   return (
     <div style={styles.fondo}>
       <div style={styles.container}>
-        {/* Botones de acción */}
+        {/* Barra usuario bien alineada, sin overflow */}
+        <div style={barraStyles.container}>
+          <div style={barraStyles.contentWrap}>
+            <span style={barraStyles.userName}>
+              {nombreUsuario}
+              <span style={barraStyles.tipoUsuario}>
+                <span style={{ color:'#ffa000', fontWeight:700, fontSize:17, marginRight:4 }}>★</span>
+                <span style={{ fontStyle: 'italic', color:'#f6a611' }}>{tipoUsuario}</span>
+              </span>
+            </span>
+          </div>
+          <button
+            style={barraStyles.logoutBtn}
+            onClick={() => setModalVisible(true)}
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <IconLogout style={{ marginLeft: 0, marginRight: 0, fill: "#f44336" }} />
+          </button>
+        </div>
+
+        <ModalConfirm
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onConfirm={() => {
+            setModalVisible(false);
+            localStorage.removeItem("token");
+            localStorage.removeItem("usuario");
+            navigate("/");
+          }}
+        />
+
         <div style={styles.botonesContainer}>
           <button style={styles.botonAccion} onClick={exportarPDF}>
             📄 Exportar PDF
@@ -413,9 +587,13 @@ export default function ResultadosPorRetos() {
             fontWeight: "bold",
             textAlign: "center",
             textShadow: "0 0 6px #a0dca0",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          Reporte Histórico General por Cursos
+          <IconLista /> Reporte Histórico General por Cursos
         </h2>
 
         {cargandoHistorico ? (
@@ -434,24 +612,17 @@ export default function ResultadosPorRetos() {
                   <th style={styles.th}>Pos.</th>
                   <th style={styles.th}>Curso</th>
                   {reporteHistoricoCursos[0]?.porReto.map((pr) => (
-                    <th
-                      key={pr.retoId}
-                      colSpan={3}
-                      style={{
-                        ...styles.th,
-                        backgroundColor: colorFondoAzul,
-                        color: colorTextoBlanco,
-                        fontWeight: "700",
-                        textShadow: "1px 1px 3px rgba(0,0,0,0.4)",
-                      }}
-                    >
+                    <th key={pr.retoId} colSpan={3}
+                      style={{ ...styles.th, backgroundColor: colorFondoAzul, color: colorTextoBlanco, fontWeight: "700", textShadow: "1px 1px 3px rgba(0,0,0,0.4)" }}>
                       {pr.nombreReto}
                     </th>
                   ))}
                   <th style={styles.th}>Puntos Totales</th>
                   <th style={styles.th}>Libras Totales</th>
                 </tr>
-                <tr style={{ backgroundColor: colorFondoAzul, color: colorTextoBlanco, fontWeight: "700" }}>
+                <tr
+                  style={{ backgroundColor: colorFondoAzul, color: colorTextoBlanco, fontWeight: "700" }}
+                >
                   <th></th>
                   <th></th>
                   {reporteHistoricoCursos[0]?.porReto.map((pr) => (
@@ -474,14 +645,7 @@ export default function ResultadosPorRetos() {
                     <td style={{ ...styles.tdNumber, fontWeight: "bold", textAlign: "center" }}>
                       {darMedalla(idx + 1)}
                     </td>
-                    <td
-                      style={{
-                        ...styles.td,
-                        fontSize: 13,
-                        fontWeight: "700",
-                        textTransform: "capitalize",
-                      }}
-                    >
+                    <td style={{ ...styles.td, fontSize: 13, fontWeight: "700", textTransform: "capitalize" }}>
                       {titleCase(curso.nombreCurso)}
                     </td>
                     {curso.porReto.map((pr, ix) => {
@@ -491,13 +655,7 @@ export default function ResultadosPorRetos() {
                           <td style={{ ...styles.tdNumber, backgroundColor: bgColor }}>
                             {pr.posicion === "-" ? "-" : darMedalla(pr.posicion)}
                           </td>
-                          <td
-                            style={{
-                              ...styles.tdNumber,
-                              fontWeight: "bold",
-                              backgroundColor: bgColor,
-                            }}
-                          >
+                          <td style={{ ...styles.tdNumber, fontWeight: "bold", backgroundColor: bgColor }}>
                             {pr.puntos}
                           </td>
                           <td style={{ ...styles.tdNumber, backgroundColor: bgColor }}>
@@ -516,7 +674,9 @@ export default function ResultadosPorRetos() {
                   {reporteHistoricoCursos[0]?.porReto.map((pr, idx) => {
                     const bgColor = coloresRetos[idx % coloresRetos.length];
                     const sumaLibras = reporteHistoricoCursos.reduce(
-                      (acc, c) => acc + (c.porReto.find((p) => p.retoId === pr.retoId)?.pesoLibras || 0),
+                      (acc, c) =>
+                        acc +
+                        (c.porReto.find((p) => p.retoId === pr.retoId)?.pesoLibras || 0),
                       0
                     );
                     return (
@@ -540,7 +700,6 @@ export default function ResultadosPorRetos() {
     </div>
   );
 }
-
 
 const styles = {
   fondo: {

@@ -24,20 +24,39 @@ import ResultadosPorCursos from './ResultadosPorCursos.js';
 import ResultadosPorRetosYCursos from './ResultadosPorRetosYCursos'; // <-- Nueva importación
 
 
-// Dentro de <Routes> agrega esta ruta sin eliminar ninguna otra:
-
-
-
-
-
-
 
 // IMPORTACIÓN NUEVA para desempeño por sedes (archivo esperado en src/)
 import ResultadosPorSedes from './ResultadosPorSedes';
 
+// IMPORTACIÓN NUEVA para página informes financieros y protección por roles
+import InformesFinancieros from './InformesFinancieros.js';
+
+
+
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" />;
+}
+
+
+
+// Nueva ruta protegida por roles específicos (profesor y admin)
+function PrivateRouteRoles({ children, rolesPermitidos }) {
+  const token = localStorage.getItem('token');
+  const usuarioStr = localStorage.getItem('usuario');
+  let usuario = null;
+  try {
+    usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+  } catch {
+    usuario = null;
+  }
+  if (!token || !usuario) {
+    return <Navigate to="/login" />;
+  }
+  if (rolesPermitidos && !rolesPermitidos.includes(usuario.rol)) {
+    return <Navigate to="/login" />;
+  }
+  return children;
 }
 
 function App() {
@@ -93,7 +112,6 @@ function App() {
             }
           />
 
-          {/* Ruta para crear reto */}
           <Route
             path="/retos/crear"
             element={
@@ -103,7 +121,6 @@ function App() {
             }
           />
 
-          {/* Ruta para editar reto */}
           <Route
             path="/retos/editar/:id"
             element={
@@ -113,7 +130,6 @@ function App() {
             }
           />
 
-          {/* Ruta para detalle de reto */}
           <Route
             path="/retos/:id"
             element={
@@ -123,8 +139,6 @@ function App() {
             }
           />
 
-
-          {/* Nueva ruta para gestión de recolecciones */}
           <Route
             path="/retos/:id/recolecciones"
             element={
@@ -134,7 +148,6 @@ function App() {
             }
           />
 
-          {/* Ruta para seleccionar reto antes de recolección */}
           <Route
             path="/seleccionar-reto-para-recoleccion"
             element={
@@ -144,7 +157,6 @@ function App() {
             }
           />
 
-          {/* Nuevas rutas para resultados */}
           <Route
             path="/resultados"
             element={
@@ -177,8 +189,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
-          {/* Nueva ruta añadida para resultados por retos y cursos */}
           <Route
             path="/resultados/por-retos-cursos"
             element={
@@ -187,10 +197,6 @@ function App() {
               </PrivateRoute>
             }
           />
-
-         
-
-          {/* NUEVA RUTA AGREGADA PARA DESEMPEÑO POR SEDES */}
           <Route
             path="/resultados/por-sedes"
             element={
@@ -199,6 +205,17 @@ function App() {
               </PrivateRoute>
             }
           />
+
+          {/* Nueva ruta para informes financieros con protección por rol */}
+         
+<Route
+  path="/informes-financieros"
+  element={
+    <PrivateRouteRoles rolesPermitidos={['profesor', 'admin']}>
+      <InformesFinancieros usuario={usuario} />
+    </PrivateRouteRoles>
+  }
+/>
 
           {/* Ruta catch-all */}
           <Route path="*" element={<Navigate to="/login" />} />

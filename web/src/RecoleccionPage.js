@@ -31,6 +31,7 @@ function calcularEstado(fechaInicio, fechaCierre) {
   if (ahora > cierre) return "Cerrado";
   return "Activo";
 }
+
 function formatDate(fecha) {
   if (!fecha) return "";
   return new Date(fecha).toLocaleDateString(undefined, {
@@ -38,6 +39,12 @@ function formatDate(fecha) {
     month: "long",
     day: "numeric",
   });
+}
+
+function getUsuarioActual() {
+  const usuarioGuardado = localStorage.getItem("usuario");
+  if (!usuarioGuardado) return null;
+  return JSON.parse(usuarioGuardado);
 }
 
 export default function RecoleccionPage() {
@@ -48,49 +55,57 @@ export default function RecoleccionPage() {
   const [salones, setSalones] = useState([]);
   const [selectedSalon, setSelectedSalon] = useState("");
   const [entregas, setEntregas] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingDatos, setLoadingDatos] = useState(true);
+  const [loadingEntregas, setLoadingEntregas] = useState(false);
   const [errorReto, setErrorReto] = useState("");
   const [errorSalones, setErrorSalones] = useState("");
   const [errorEntregas, setErrorEntregas] = useState("");
   const [peso, setPeso] = useState("");
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+
+  // Estado agregado para controlar la visibilidad del modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   const usuario = useMemo(() => {
     const u = localStorage.getItem("usuario");
     return u ? JSON.parse(u) : null;
   }, []);
 
-  useEffect(() => {
-    async function cargarReto() {
-      try {
-        setErrorReto("");
-        const res = await api.get(`/retos/${retoId}`);
-        setReto(res.data);
-      } catch {
-        setErrorReto("Error al cargar información del reto.");
-      }
-    }
-    cargarReto();
-  }, [retoId]);
+  const [modalSalir, setModalSalir] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const usuarioActual = getUsuarioActual();
+
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    navigate("/");
+  };
 
   useEffect(() => {
-    async function cargarSalones() {
-      if (!reto) return;
+    async function cargarDatos() {
+      setLoadingDatos(true);
       try {
+        setErrorReto("");
+        const resReto = await api.get(`/retos/${retoId}`);
+        setReto(resReto.data);
         setErrorSalones("");
-        const res = await api.get(`/recolecciones/reto/${retoId}/salones`);
-        setSalones(res.data);
+        const resSalones = await api.get(`/recolecciones/reto/${retoId}/salones`);
+        setSalones(resSalones.data);
       } catch {
-        setErrorSalones("Error al cargar salones.");
+        setErrorReto("Error al cargar información del reto o salones.");
+      } finally {
+        setTimeout(() => setLoadingDatos(false), 1000); // mínimo 1s spinner
       }
     }
-    cargarSalones();
-  }, [reto, retoId]);
+    cargarDatos();
+  }, [retoId]);
 
   useEffect(() => {
     async function cargarEntregas() {
       try {
-        setLoading(true);
+        setLoadingEntregas(true);
         setErrorEntregas("");
         let url = `/recolecciones/reto/${retoId}`;
         if (selectedSalon) url += `?salonId=${selectedSalon}`;
@@ -100,7 +115,7 @@ export default function RecoleccionPage() {
         setErrorEntregas("Error al cargar registros.");
         setEntregas([]);
       } finally {
-        setLoading(false);
+        setLoadingEntregas(false);
       }
     }
     cargarEntregas();
@@ -115,6 +130,14 @@ export default function RecoleccionPage() {
       return () => clearTimeout(timeout);
     }
   }, [formSuccess, formError]);
+
+  // Función para mostrar el modal de éxito 2 segundos y ocultarlo
+  function mostrarModalExito() {
+    setShowSuccessModal(true);
+    setTimeout(() => {
+      setShowSuccessModal(false);
+    }, 2000);
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -145,8 +168,11 @@ export default function RecoleccionPage() {
         },
       });
       setPeso("");
-      setSelectedSalon(""); 
+      setSelectedSalon("");
       setFormSuccess("Registro de información exitoso");
+
+      mostrarModalExito();
+
     } catch (err) {
       let mensaje = "Error al registrar la evidencia.";
       if (err?.response?.data?.message) {
@@ -157,155 +183,237 @@ export default function RecoleccionPage() {
   };
 
   const estadoActual = reto ? calcularEstado(reto.fechaInicio, reto.fechaCierre) : "";
-
   const totalPeso = entregas.reduce((acc, cur) => acc + (cur.pesoLibras || 0), 0);
 
   return (
     <div style={styles.fondo}>
       <div style={styles.container}>
-        <h2 style={styles.title}>
-          <IconFormulario />
-          Ingreso de datos en el reto
-        </h2>
-        <div style={styles.contentRow}>
-          <table style={styles.retoTable}>
-            <thead>
-              <tr>
-                <th colSpan="2" style={styles.retoTableHeader}>
-                  Información del Reto
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {errorReto ? (
-                <tr>
-                  <td colSpan="2" style={styles.errorCell}>{errorReto}</td>
-                </tr>
-              ) : reto ? (
-                <>
-                  <tr style={styles.infoRowEven}>
-                    <td style={styles.retoLabelLeft}>Nombre:</td>
-                    <td style={styles.retoValue}>{reto.nombre}</td>
-                  </tr>
-                  <tr style={styles.infoRowOdd}>
-                    <td style={styles.retoLabelLeft}>Fecha apertura:</td>
-                    <td style={styles.retoValue}>{formatDate(reto.fechaInicio)}</td>
-                  </tr>
-                  <tr style={styles.infoRowEven}>
-                    <td style={styles.retoLabelLeft}>Fecha cierre:</td>
-                    <td style={styles.retoValue}>{formatDate(reto.fechaCierre)}</td>
-                  </tr>
-                  <tr style={styles.infoRowOdd}>
-                    <td style={styles.retoLabelLeft}>Estado:</td>
-                    <td style={{
-                      ...styles.estadoCuadroSinSombra,
-                      color: estadoActual === "Abierto" ? "#2e7d32" : estadoActual === "Cerrado" ? "#c73838" : "#555"
-                    }}>{estadoActual}</td>
-                  </tr>
-                </>
-              ) : (
-                <tr>
-                  <td colSpan="2">Cargando...</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <form style={styles.formSameSize} onSubmit={handleSubmit}>
-            <h3 style={styles.formTitleCentered}>
-              <IconFormulario />
-              Registro de evidencia
-            </h3>
-            {formSuccess && <p style={{ ...styles.message, ...styles.success }}>{formSuccess}</p>}
-            {formError && <p style={{ ...styles.message, ...styles.error }}>{formError}</p>}
-            {errorSalones && <p style={styles.error}>{errorSalones}</p>}
-            <label htmlFor="selectSalon" style={styles.labelBold}>
-              Seleccione Salón
-            </label>
-            <select
-              id="selectSalon"
-              style={styles.controlInput}
-              value={selectedSalon}
-              onChange={(e) => setSelectedSalon(e.target.value)}
-            >
-              <option value="">-- Seleccione un salón --</option>
-              {salones.map((salon) => (
-                <option key={salon._id} value={salon._id}>
-                  {`${salon.grado} | ${salon.salon} | ${salon.jornada} | ${salon.sede}`}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="peso" style={styles.labelBold}>
-              Peso reciclado (libras)
-            </label>
-            <div style={styles.inputRow}>
-              <input
-                id="peso"
-                type="number"
-                style={styles.controlInput}
-                placeholder="Ej. 12.50"
-                min="0"
-                step="0.01"
-                value={peso}
-                onChange={(e) => setPeso(e.target.value)}
-                required
-                inputMode="decimal"
-              />
-              <button type="submit" style={styles.buttonRow}>
-                <IconGuardar />
-                Registrar
-              </button>
+        {/* Barra usuario conectado / salir */}
+        {usuarioActual && (
+          <div style={styles.userBar}>
+            <div style={styles.userInfo}>
+              <svg width={28} height={28} fill="#11998e" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="8" r="5" />
+                <ellipse cx="12" cy="17" rx="8.2" ry="5.5" fill="#d1f4f1" />
+                <ellipse cx="12" cy="17.4" rx="7.3" ry="4.2" fill="#fff" />
+              </svg>
+              <span>{usuarioActual.nombre}</span>
+              <span style={styles.userRole}>
+                <svg width={17} height={17} viewBox="0 0 24 24" fill="#eca728" aria-hidden="true" focusable="false">
+                  <path d="M12 2l2.092 6.426H20.5l-5.204 3.783L17.181 20 12 15.549 6.819 20l1.885-7.791L3.5 8.426h6.408z" />
+                </svg>
+                {usuarioActual.rol}
+              </span>
             </div>
-          </form>
-        </div>
-        <div style={styles.recordsContainer}>
-          <h3 style={styles.recordsTitleCentered}>
-            <IconRegistro />
-            Registro de Evidencias Previas
-          </h3>
-          {loading && <p>Cargando registros...</p>}
-          {errorEntregas && <p style={styles.error}>{errorEntregas}</p>}
-          {!loading && entregas.length === 0 && <p>No hay registros aún.</p>}
-          {!loading && entregas.length > 0 && (
-            <table style={styles.recordsTable}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Grado</th>
-                  <th style={styles.th}>Curso</th>
-                  <th style={styles.th}>Jornada</th>
-                  <th style={styles.th}>Sede</th>
-                  <th style={styles.th}>Peso (lbs)</th>
-                  <th style={styles.th}>Registrado por</th>
-                  <th style={styles.th}>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entregas.map((entrega, idx) => (
-                  <tr key={entrega._id || idx} style={idx % 2 === 0 ? styles.recordRowEven : styles.recordRowOdd}>
-                    <td style={styles.td}>{entrega.salonId?.grado || ""}</td>
-                    <td style={styles.td}>{entrega.salonId?.salon || ""}</td>
-                    <td style={styles.td}>{entrega.salonId?.jornada || ""}</td>
-                    <td style={styles.td}>{entrega.salonId?.sede || ""}</td>
-                    <td style={styles.td}>
-                      {typeof entrega.pesoLibras === "number" ? entrega.pesoLibras.toFixed(2) : "-"}
-                    </td>
-                    <td style={styles.td}>{entrega.registradoPor?.nombre || "No registrado"}</td>
-                    <td style={styles.td}>
-                      {entrega.fechaRegistro ? new Date(entrega.fechaRegistro).toLocaleString() : "-"}
-                    </td>
-                  </tr>
-                ))}
-                <tr style={styles.totalRow}>
-                  <td colSpan="4" style={styles.totalLabelCell}>Total Peso (lbs):</td>
-                  <td style={styles.td}>{totalPeso.toFixed(2)}</td>
-                  <td colSpan="2"></td>
-                </tr>
-              </tbody>
-            </table>
-          )}
-        </div>
-        <button style={styles.backButton} onClick={() => navigate(-1)}>
-          ← Volver
-        </button>
+            <button
+              type="button"
+              style={styles.logoutBtn}
+              onClick={() => setModalSalir(true)}
+              aria-label="Cerrar sesión"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+              className="logout-button"
+            >
+              <svg width={26} height={26} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+                <rect x="3" y="3" width="14" height="18" rx="3.5" stroke="#e74c3c" strokeWidth="2" />
+                <path d="M16 12h5M19 15l2-3-2-3" stroke="#e74c3c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span style={{ ...styles.logoutTooltip, opacity: showTooltip ? 1 : 0, visibility: showTooltip ? "visible" : "hidden" }}>
+                Cerrar sesión
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Modal salir */}
+        {modalSalir && (
+          <div style={styles.modalOverlay} role="dialog" aria-modal="true">
+            <div style={styles.modalContent}>
+              <h2 style={styles.modalTitle}>¿Seguro que quieres cerrar sesión?</h2>
+              <div style={styles.modalButtons}>
+                <button style={styles.modalButtonConfirm} onClick={() => {
+                  setModalSalir(false);
+                  setTimeout(() => cerrarSesion(), 200);
+                }}>
+                  Sí, salir
+                </button>
+                <button style={styles.modalButtonCancel} onClick={() => setModalSalir(false)}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loadingDatos ? (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 60 }}>
+            <svg width={48} height={48} viewBox="0 0 50 50" aria-hidden="true" >
+              <circle
+                cx="25"
+                cy="25"
+                r="20"
+                fill="none"
+                stroke="#11998e"
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray="31.4 31.4"
+              >
+                <animateTransform
+                  attributeName="transform"
+                  attributeType="XML"
+                  type="rotate"
+                  from="0 25 25"
+                  to="360 25 25"
+                  dur="1s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+            </svg>
+          </div>
+        ) : (
+          <>
+            <h2 style={styles.title}>
+              <IconFormulario />
+              Ingreso de datos en el reto
+            </h2>
+
+            <div style={styles.contentRow}>
+              <div style={styles.retoTableContainer}>
+                <table style={styles.retoTable}>
+                  <thead>
+                    <tr>
+                      <th colSpan="2" style={styles.retoTableHeader}>Información del Reto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {errorReto ? (
+                      <tr>
+                        <td colSpan="2" style={styles.errorCell}>{errorReto}</td>
+                      </tr>
+                    ) : reto ? (
+                      <>
+                        <tr style={styles.infoRowEven}>
+                          <td style={styles.retoLabelLeft}>Nombre:</td>
+                          <td style={styles.retoValue}>{reto.nombre}</td>
+                        </tr>
+                        <tr style={styles.infoRowOdd}>
+                          <td style={styles.retoLabelLeft}>Fecha apertura:</td>
+                          <td style={styles.retoValue}>{formatDate(reto.fechaInicio)}</td>
+                        </tr>
+                        <tr style={styles.infoRowEven}>
+                          <td style={styles.retoLabelLeft}>Fecha cierre:</td>
+                          <td style={styles.retoValue}>{formatDate(reto.fechaCierre)}</td>
+                        </tr>
+                        <tr style={styles.infoRowOdd}>
+                          <td style={styles.retoLabelLeft}>Estado:</td>
+                          <td style={{
+                            ...styles.estadoCuadroSinSombra,
+                            color: estadoActual === "Abierto" ? "#2e7d32" : estadoActual === "Cerrado" ? "#c73838" : "#555"
+                          }}>{estadoActual}</td>
+                        </tr>
+                      </>
+                    ) : (
+                      <tr>
+                        <td colSpan="2">No hay información disponible.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <form style={styles.formSameSize} onSubmit={handleSubmit}>
+                <h3 style={styles.formTitleCentered}>
+                  <IconFormulario />
+                  Registro de evidencia
+                </h3>
+                {formSuccess && <p style={{ ...styles.message, ...styles.success }}>{formSuccess}</p>}
+                {formError && <p style={{ ...styles.message, ...styles.error }}>{formError}</p>}
+                {errorSalones && <p style={styles.error}>{errorSalones}</p>}
+                <label htmlFor="selectSalon" style={styles.labelBold}>Seleccione Salón</label>
+                <select
+                  id="selectSalon"
+                  style={styles.controlInput}
+                  value={selectedSalon}
+                  onChange={(e) => setSelectedSalon(e.target.value)}
+                >
+                  <option value="">-- Seleccione un salón --</option>
+                  {salones.map((salon) => (
+                    <option key={salon._id} value={salon._id}>
+                      {`${salon.grado} | ${salon.salon} | ${salon.jornada} | ${salon.sede}`}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="peso" style={styles.labelBold}>Peso reciclado (libras)</label>
+                <div style={styles.inputRow}>
+                  <input
+                    id="peso"
+                    type="number"
+                    style={styles.controlInput}
+                    placeholder="Ej. 12.50"
+                    min="0"
+                    step="0.01"
+                    value={peso}
+                    onChange={(e) => setPeso(e.target.value)}
+                    required
+                    inputMode="decimal"
+                  />
+                  <button type="submit" style={styles.buttonRow}>
+                    <IconGuardar />
+                    Registrar
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div style={styles.recordsContainer}>
+              <h3 style={styles.recordsTitleCentered}>
+                <IconRegistro />
+                Registro de Evidencias Previas
+              </h3>
+              {loadingEntregas && <p>Cargando registros...</p>}
+              {errorEntregas && <p style={styles.error}>{errorEntregas}</p>}
+              {!loadingEntregas && entregas.length === 0 && <p>No hay registros aún.</p>}
+              {!loadingEntregas && entregas.length > 0 && (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={styles.recordsTable}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Grado</th>
+                        <th style={styles.th}>Curso</th>
+                        <th style={styles.th}>Jornada</th>
+                        <th style={styles.th}>Sede</th>
+                        <th style={styles.th}>Peso (lbs)</th>
+                        <th style={styles.th}>Registrado por</th>
+                        <th style={styles.th}>Fecha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entregas.map((entrega, idx) => (
+                        <tr key={entrega._id || idx} style={idx % 2 === 0 ? styles.recordRowEven : styles.recordRowOdd}>
+                          <td style={styles.td}>{entrega.salonId?.grado || ""}</td>
+                          <td style={styles.td}>{entrega.salonId?.salon || ""}</td>
+                          <td style={styles.td}>{entrega.salonId?.jornada || ""}</td>
+                          <td style={styles.td}>{entrega.salonId?.sede || ""}</td>
+                          <td style={styles.td}>
+                            {typeof entrega.pesoLibras === "number" ? entrega.pesoLibras.toFixed(2) : "-"}
+                          </td>
+                          <td style={styles.td}>{entrega.registradoPor?.nombre || "No registrado"}</td>
+                          <td style={styles.td}>
+                            {entrega.fechaRegistro ? new Date(entrega.fechaRegistro).toLocaleString() : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={styles.totalRow}>
+                        <td colSpan="4" style={styles.totalLabelCell}>Total Peso (lbs):</td>
+                        <td style={styles.td}>{totalPeso.toFixed(2)}</td>
+                        <td colSpan="2"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <button style={styles.backButton} onClick={() => navigate(-1)}>
+              ← Volver
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -336,6 +444,75 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: 35,
+    boxSizing: "border-box",
+  },
+  userBar: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px 20px",
+    background: "linear-gradient(90deg,#e0fefa 60%,#fffbe5 100%)",
+    borderRadius: 20,
+    boxShadow: "0 2px 12px #e0fefa50",
+    color: "#11998e",
+    marginBottom: 24,
+    flexWrap: "wrap",
+    gap: 10,
+    fontWeight: 700,
+    fontSize: 18,
+    boxSizing: "border-box",
+  },
+  userInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  userRole: {
+    display: "inline-flex",
+    alignItems: "center",
+    fontWeight: 500,
+    fontSize: 14,
+    color: "#eca728",
+    gap: 6,
+    fontStyle: "italic",
+    userSelect: "none",
+  },
+  logoutBtn: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "50%",
+    padding: 8,
+    boxShadow: "0 2px 16px #e74c3c22",
+    transition: "background 0.2s",
+    color: "#e44848",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    flexShrink: 0,
+  },
+  logoutTooltip: {
+    position: "absolute",
+    bottom: "-34px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    backgroundColor: "#272727de",
+    color: "#fff",
+    padding: "6px 14px",
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    opacity: 0,
+    transition: "opacity 0.25s",
+    pointerEvents: "none",
+    zIndex: 5,
+  },
+  logoutTooltipVisible: {
+    opacity: 1,
+    pointerEvents: "auto",
   },
   title: {
     fontWeight: 700,
@@ -351,10 +528,16 @@ const styles = {
     gap: 25,
     flexWrap: "wrap",
     alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  retoTableContainer: {
+    maxWidth: cajaWidth,
+    width: "100%",
+    overflowX: "auto",
   },
   retoTable: {
+    width: "100%",
     minWidth: cajaWidth,
-    maxWidth: cajaWidth,
     borderCollapse: "separate",
     borderSpacing: "0 12px",
     borderRadius: 16,
@@ -400,6 +583,25 @@ const styles = {
     display: "inline-block",
     minWidth: 80,
   },
+  message: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: "#d0f0d3",
+    userSelect: "none",
+    textAlign: "center",
+  },
+  success: {
+    color: "#2e7d32", // Verde oscuro
+    fontWeight: "700",
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  error: {
+    color: "#c73838",
+    fontWeight: "700",
+    fontSize: 15,
+    marginBottom: 12,
+  },
   formSameSize: {
     borderRadius: 16,
     backgroundColor: "rgba(230, 250, 230, 0.85)",
@@ -411,6 +613,7 @@ const styles = {
     flexDirection: "column",
     gap: 16,
     justifyContent: "center",
+    boxSizing: "border-box",
   },
   formTitleCentered: {
     fontWeight: 700,
@@ -526,20 +729,16 @@ const styles = {
     userSelect: "none",
     alignSelf: "center",
   },
-  error: {
-    color: "#c62828",
-    fontWeight: 700,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  success: {
-    color: "#2e7d32",
-    fontWeight: 700,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  message: {
-    padding: "12px 0",
-    borderRadius: 8,
-  },
+
+  // Responsive adjustments for logout button centering on mobile
+  "@media (max-width: 480px)": {
+    userBar: {
+      flexDirection: "column",
+      gap: 14,
+      alignItems: "center",
+    },
+    logoutBtn: {
+      margin: "0 auto",
+    },
+  }
 };

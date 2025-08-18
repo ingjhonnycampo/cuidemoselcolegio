@@ -3,7 +3,7 @@ import React from 'react';
 function Footer() {
   return (
     <footer style={styles.footer}>
-      @Todos los derechos reservados <strong>SYNERGY</strong>, Diseñado por Ing. Jhonny A. Campo Herrera
+      @Todos los derechos reservados <strong>SYNERGY</strong>, Designed by: Ing. Jhonny A. Campo Herrera
     </footer>
   );
 }

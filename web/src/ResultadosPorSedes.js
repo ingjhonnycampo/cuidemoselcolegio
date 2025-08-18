@@ -1,13 +1,162 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import api from "./api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+// ---- ICONS ----
+const IconLogout = ({ style = {} }) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={25}
+    height={25}
+    aria-hidden="true"
+    style={{ verticalAlign: "middle", fill: "#f44336", cursor: "pointer", ...style }}
+  >
+    <circle cx={12} cy={12} r={12} fill="none" />
+    <g>
+      <path d="M16 13v-2H7.83l1.58-1.59L8 8l-4 4 4 4 1.41-1.41L7.83 13z" fill="none" stroke="#f44336" strokeWidth="2" />
+    </g>
+  </svg>
+);
+
+const ModalConfirm = ({ visible, onClose, onConfirm }) => {
+  if (!visible) return null;
+  return (
+    <div
+      style={modalStyles.backdrop}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalTitle"
+      aria-describedby="modalDesc"
+    >
+      <div style={modalStyles.modal}>
+        <h2 id="modalTitle" style={modalStyles.title}>
+          Cerrar sesión
+        </h2>
+        <p id="modalDesc" style={modalStyles.description}>
+          ¿Seguro que deseas cerrar tu sesión?
+        </p>
+        <div style={modalStyles.buttons}>
+          <button style={modalStyles.btnConfirm} onClick={onConfirm}>
+            Sí, cerrar sesión
+          </button>
+          <button style={modalStyles.btnCancel} onClick={onClose}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const modalStyles = {
+  backdrop: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10000,
+  },
+  modal: {
+    background: "#fff",
+    borderRadius: 12,
+    padding: 30,
+    maxWidth: 380,
+    width: "90%",
+    boxShadow: "0 8px 28px rgba(0,0,0,0.25)",
+    textAlign: "center",
+  },
+  title: {
+    marginBottom: 12,
+    color: "#2e7d32",
+  },
+  description: {
+    marginBottom: 20,
+    fontSize: 16,
+    color: "#444",
+  },
+  buttons: {
+    display: "flex",
+    justifyContent: "space-around",
+  },
+  btnConfirm: {
+    backgroundColor: "#2e7d32",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "10px 20px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  btnCancel: {
+    backgroundColor: "#ccc",
+    color: "#333",
+    border: "none",
+    borderRadius: 8,
+    padding: "10px 20px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+};
+
+const barraStyles = {
+  container: {
+    width: "100%",
+    minHeight: 42,
+    margin: "0 0 24px 0",
+    padding: "0 19px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "linear-gradient(90deg, #d1f6fa 40%, #fefbe2 100%)",
+    borderRadius: 26,
+    fontWeight: 700,
+    fontSize: 17,
+    color: "#1c6a78",
+    boxSizing: "border-box",
+  },
+  userName: {
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    fontWeight: 700,
+    fontSize: 17,
+    color: "#16a098",
+    whiteSpace: "nowrap",
+  },
+  tipoUsuario: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 3,
+    color: "#f6b70e",
+    fontWeight: 700,
+    fontSize: 15,
+    marginLeft: 3,
+    letterSpacing: "0.02em",
+    fontStyle: "italic",
+  },
+  logoutBtn: {
+    background: "none",
+    border: "none",
+    padding: 0,
+    margin: 0,
+    cursor: "pointer",
+    outline: "none",
+    height: 36,
+    width: 36,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+};
 
 const Medal = ({ type }) => {
   const colors = {
     oro: "#ffd700",
     plata: "#c0c0c0",
-    bronza: "#cd7f32",
+    bronza: "#cd7d32",
   };
   return (
     <svg
@@ -39,93 +188,67 @@ function calcularEstado(fechaInicio, fechaCierre) {
   if (ahora > cierre) return "Cerrado";
   return "Activo";
 }
-
 function asignarPuntos(ranking) {
   const puntosPosicion = [20, 15, 10, 7, 5, 3, 1];
-  const ordenado = [...ranking].sort(
-    (a, b) => (b.pesoLibras || 0) - (a.pesoLibras || 0)
-  );
+  const ordenado = [...ranking].sort((a, b) => (b.pesoLibras || 0) - (a.pesoLibras || 0));
   return ordenado.map((item, idx) => {
-    const puntos =
-      idx < puntosPosicion.length
-        ? item.pesoLibras > 0
-          ? puntosPosicion[idx]
-          : 0
-        : item.pesoLibras > 0
+    const puntos = idx < puntosPosicion.length
+      ? item.pesoLibras > 0
+        ? puntosPosicion[idx]
+        : 0
+      : item.pesoLibras > 0
         ? 1
         : 0;
     return { ...item, puntos };
   });
 }
-
 function darMedalla(position) {
-  if (position === 1)
-    return (
-      <span style={styles.puestoCell}>
-        {position}
-        <Medal type="oro" />
-      </span>
-    );
-  if (position === 2)
-    return (
-      <span style={styles.puestoCell}>
-        {position}
-        <Medal type="plata" />
-      </span>
-    );
-  if (position === 3)
-    return (
-      <span style={styles.puestoCell}>
-        {position}
-        <Medal type="bronza" />
-      </span>
-    );
+  if (position === 1) return (<span style={styles.puestoCell}>{position}<Medal type="oro" /></span>);
+  if (position === 2) return (<span style={styles.puestoCell}>{position}<Medal type="plata" /></span>);
+  if (position === 3) return (<span style={styles.puestoCell}>{position}<Medal type="bronza" /></span>);
   return <span style={{ minWidth: 16, display: "inline-block" }}>{position}.</span>;
 }
-
-// Mostrar texto en mayúsculas
 function aMayusculas(texto) {
   if (!texto) return "";
   return texto.toString().toUpperCase();
 }
 
-const coloresRetos = ["#d7efd9", "#c5e5c5"];
-const colorFondoAzul = "#1f5d1f";
-const colorTextoBlanco = "white";
-
 const LoadingSpinner = () => (
-  <div style={styles.loadingContainer}>
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "rgba(255,255,255,0.9)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      zIndex: 9999,
+    }}
+  >
     <svg
-      width={48}
-      height={48}
-      viewBox="0 0 50 50"
-      style={{ animation: "spin 2s linear infinite" }}
+      width={80}
+      height={80}
+      viewBox="0 0 40 40"
+      style={{ animation: "reloj-spin 1.8s linear infinite" }}
+      aria-hidden="true"
     >
-      <circle cx={25} cy={25} r={10} fill="#4a867a" />
-      <path d="M25 10l12 7v0" fill="#7cbf7b">
-        <animateTransform
-          attributeName="transform"
-          attributeType="XML"
-          type="rotate"
-          from="0 25 25"
-          to="360 25 25"
-          dur="1.5s"
-          repeatCount="indefinite"
-        />
-      </path>
+      <circle cx={20} cy={20} r={16} stroke="#6db64a" strokeWidth={5} fill="none" />
+      <path d="M20 20v-12" stroke="#4e8d28" strokeWidth={4} strokeLinecap="round" />
+      <circle cx={20} cy={20} r={4} fill="#4e8d28" />
       <style>{`
-        @keyframes spin {
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+          @keyframes reloj-spin {
+            from { transform: rotate(0deg);}
+            to { transform: rotate(360deg);}
+          }
+        `}</style>
     </svg>
-    <span style={{ fontSize: 18, fontWeight: "700", color: "#2d7a2d", marginLeft: 12 }}>
-      Cargando información...
-    </span>
+    <span style={{ marginTop: 24, fontWeight: "700", fontSize: 22, color: "#4a7f22" }}>Cargando...</span>
   </div>
 );
 
 export default function ResultadosPorSedes() {
+  const [loadingGeneral, setLoadingGeneral] = useState(true);
   const [retos, setRetos] = useState([]);
   const [selectedRetoId, setSelectedRetoId] = useState("");
   const [ranking, setRanking] = useState([]);
@@ -135,27 +258,47 @@ export default function ResultadosPorSedes() {
   const [loadingDetalles, setLoadingDetalles] = useState(false);
   const [loadingConsolidado, setLoadingConsolidado] = useState(false);
 
+  const [modalVisible, setModalVisible] = useState(false);
+
   const reporteDetalleRef = useRef(null);
   const reporteConsolidadoRef = useRef(null);
 
+  const usuario = useMemo(() => {
+    const u = localStorage.getItem("usuario");
+    return u ? JSON.parse(u) : null;
+  }, []);
+  const nombreUsuario = usuario?.nombre || "Usuario";
+  const tipoUsuario = usuario?.tipo || usuario?.role || usuario?.perfil || "admin";
+
+  // Spinner show for 1.8s at load
   useEffect(() => {
-    async function cargarRetos() {
-      try {
-        const res = await api.get("/retos");
-        const retosCerrados = res.data.filter((r) =>
-          calcularEstado(r.fechaInicio, r.fechaCierre) === "Cerrado"
-        );
-        retosCerrados.sort(
-          (a, b) => new Date(a.fechaCierre) - new Date(b.fechaCierre)
-        );
-        setRetos(retosCerrados);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    cargarRetos();
+    setLoadingGeneral(true);
+    const timer = setTimeout(() => setLoadingGeneral(false), 1800);
+    return () => clearTimeout(timer);
   }, []);
 
+  // Load closed retos after spinner disappears
+  useEffect(() => {
+    if (!loadingGeneral) {
+      async function cargarRetos() {
+        try {
+          const res = await api.get("/retos");
+          const retosCerrados = res.data.filter(
+            (r) => calcularEstado(r.fechaInicio, r.fechaCierre) === "Cerrado"
+          );
+          retosCerrados.sort(
+            (a, b) => new Date(a.fechaCierre) - new Date(b.fechaCierre)
+          );
+          setRetos(retosCerrados);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      cargarRetos();
+    }
+  }, [loadingGeneral]);
+
+  // Load detalle ranking for selected reto
   useEffect(() => {
     if (!selectedRetoId) {
       setRanking([]);
@@ -169,30 +312,30 @@ export default function ResultadosPorSedes() {
       api.get(`/retos/${selectedRetoId}`),
     ])
       .then(([resRank, resReto]) => {
-        const agrupa = resRank.data.reduce((acc, it) => {
-          const idKey = (it.salonId?.["_id"] || it.salonId || it.salon || "").toString();
+        const agrupado = resRank.data.reduce((acc, item) => {
+          const idKey = (item.salonId?.["_id"] || item.salonId || item.salon || "").toString();
           if (!acc[idKey]) {
             acc[idKey] = {
-              salon: it.salonId?.salon || it.salon || "",
-              grado: it.salonId?.grado || it.grado || "",
-              jornada: it.salonId?.jornada || it.jornada || "",
-              sede: it.salonId?.sede || it.sede || "",
+              salon: item.salonId?.salon || item.salon || "",
+              grado: item.salonId?.grado || item.grado || "",
+              jornada: item.salonId?.jornada || item.jornada || "",
+              sede: item.salonId?.sede || item.sede || "",
               pesoLibras: 0,
               salonId: idKey,
             };
           }
-          acc[idKey].pesoLibras += it.pesoLibras || 0;
+          acc[idKey].pesoLibras += item.pesoLibras || 0;
           return acc;
         }, {});
-        let arr = Object.values(agrupa);
+        let arr = Object.values(agrupado);
 
         const salones = resReto.data.salonesAsignados || [];
         setSalonesAsignados(salones);
         salones.forEach((s) => {
-          const idKey = (s["_id"] || s).toString();
-          if (!arr.find((x) => x.salonId === idKey)) {
+          const sid = (s["_id"] || s).toString();
+          if (!arr.find((x) => x.salonId === sid)) {
             arr.push({
-              salonId: idKey,
+              salonId: sid,
               salon: s.salon || "",
               grado: s.grado || "",
               jornada: s.jornada || "",
@@ -216,87 +359,103 @@ export default function ResultadosPorSedes() {
       .finally(() => setLoadingDetalles(false));
   }, [selectedRetoId]);
 
+  // Load consolidate data sorted with tie-break by libras 
   useEffect(() => {
-    async function cargarConsolidado() {
-      setLoadingConsolidado(true);
-      try {
-        const res = await api.get("/retos");
-        const retosCerrados = res.data.filter((r) =>
-          calcularEstado(r.fechaInicio, r.fechaCierre) === "Cerrado"
-        );
-        const acumulado = {};
-        for (const reto of retosCerrados) {
-          const resRecol = await api.get(`/recolecciones/reto/${reto._id}`);
-          const agrupa = resRecol.data.reduce((acc, it) => {
-            const idKey = (it.salonId?.["_id"] || it.salonId || it.salon || "").toString();
-            if (!acc[idKey]) {
-              acc[idKey] = {
-                salon: it.salonId?.salon || it.salon || "",
-                grado: it.salonId?.grado || it.grado || "",
-                jornada: it.salonId?.jornada || it.jornada || "",
-                sede: it.salonId?.sede || it.sede || "",
-                pesoLibras: 0,
-              };
-            }
-            acc[idKey].pesoLibras += it.pesoLibras || 0;
-            return acc;
-          }, {});
-          let arr = Object.values(agrupa);
-          const scored = asignarPuntos(arr);
-          scored.forEach((item) => {
-            if (!item.sede || !item.jornada) return;
-            const key =
-              aMayusculas(item.sede.trim()) + " - " + aMayusculas(item.jornada.trim());
+    if (!loadingGeneral) {
+      async function cargarConsolidado() {
+        setLoadingConsolidado(true);
+        try {
+          const res = await api.get("/retos");
+          const retosCerrados = res.data.filter(
+            (r) => calcularEstado(r.fechaInicio, r.fechaCierre) === "Cerrado"
+          );
+          const acumulado = {};
+          for (const reto of retosCerrados) {
+            const resRecol = await api.get(`/recolecciones/reto/${reto._id}`);
+            const agrupado = resRecol.data.reduce((acc, item) => {
+              const idKey = (item.salonId?.["_id"] || item.salonId || item.salon || "").toString();
+              if (!acc[idKey]) {
+                acc[idKey] = {
+                  salon: item.salonId?.salon || item.salon || "",
+                  grado: item.salonId?.grado || item.grado || "",
+                  jornada: item.salonId?.jornada || item.jornada || "",
+                  sede: item.salonId?.sede || item.sede || "",
+                  pesoLibras: 0,
+                };
+              }
+              acc[idKey].pesoLibras += item.pesoLibras || 0;
+              return acc;
+            }, {});
+            let arr = Object.values(agrupado);
+            const scored = asignarPuntos(arr);
+            scored.forEach((item) => {
+              if (!item.sede || !item.jornada) return;
+              const key = aMayusculas(item.sede.trim()) + " - " + aMayusculas(item.jornada.trim());
+              if (!acumulado[key]) {
+                acumulado[key] = {
+                  sede: aMayusculas(item.sede),
+                  jornada: aMayusculas(item.jornada),
+                  puntosTotales: 0,
+                  librasTotales: 0,
+                };
+              }
+              acumulado[key].puntosTotales += item.puntos || 0;
+              acumulado[key].librasTotales += item.pesoLibras || 0;
+            });
+          }
+          const resSalones = await api.get("/salones");
+          const salones = resSalones.data || [];
+          salones.forEach((s) => {
+            const key = aMayusculas(s.sede.trim()) + " - " + aMayusculas(s.jornada.trim());
             if (!acumulado[key]) {
               acumulado[key] = {
-                sede: aMayusculas(item.sede),
-                jornada: aMayusculas(item.jornada),
+                sede: aMayusculas(s.sede),
+                jornada: aMayusculas(s.jornada),
                 puntosTotales: 0,
                 librasTotales: 0,
               };
             }
-            acumulado[key].puntosTotales += item.puntos || 0;
-            acumulado[key].librasTotales += item.pesoLibras || 0;
           });
+          let arreglo = Object.entries(acumulado).map(([key, val]) => ({ key, ...val }));
+          arreglo.sort((a, b) => {
+            if (b.puntosTotales !== a.puntosTotales) return b.puntosTotales - a.puntosTotales;
+            return b.librasTotales - a.librasTotales;
+          });
+          arreglo = arreglo.map((item, idx) => ({
+            ...item,
+            posicion: idx + 1,
+            medalla: idx === 0 ? "oro" : idx === 1 ? "plata" : idx === 2 ? "bronza" : null,
+          }));
+          setTablaConsolidado(arreglo);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingConsolidado(false);
         }
-        const resSalones = await api.get("/salones");
-        const salones = resSalones.data || [];
-        salones.forEach((s) => {
-          const key =
-            aMayusculas(s.sede.trim()) + " - " + aMayusculas(s.jornada.trim());
-          if (!acumulado[key]) {
-            acumulado[key] = {
-              sede: aMayusculas(s.sede),
-              jornada: aMayusculas(s.jornada),
-              puntosTotales: 0,
-              librasTotales: 0,
-            };
-          }
-        });
-        let arreglo = Object.entries(acumulado).map(([key, val]) => ({ key, ...val }));
-        arreglo.sort((a, b) => b.puntosTotales - a.puntosTotales);
-        arreglo = arreglo.map((item, idx) => ({
-          ...item,
-          posicion: idx + 1,
-          medalla: idx === 0 ? "oro" : idx === 1 ? "plata" : idx === 2 ? "bronce" : null,
-        }));
-        setTablaConsolidado(arreglo);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingConsolidado(false);
       }
+      cargarConsolidado();
     }
-    cargarConsolidado();
-  }, []);
+  }, [loadingGeneral]);
 
   function exportarPDF(ref, nombre) {
-    if (!ref.current) return;
+    if (!ref.current) {
+      alert("No hay datos para exportar.");
+      return;
+    }
+    let table = ref.current;
+    if (table.tagName && table.tagName.toLowerCase() !== "table") {
+      const possible = table.querySelector("table");
+      if (possible) table = possible;
+    }
+    if (!table || !table.rows || table.rows.length < 2) {
+      alert("No hay datos para exportar.");
+      return;
+    }
     const doc = new jsPDF("landscape");
     doc.setFontSize(18);
     doc.text(nombre, 14, 20);
     autoTable(doc, {
-      html: ref.current,
+      html: table,
       startY: 30,
       styles: { fontSize: 10, cellPadding: 2 },
       headStyles: { fillColor: [39, 174, 96], textColor: 255 },
@@ -307,9 +466,14 @@ export default function ResultadosPorSedes() {
 
   function exportarExcel(ref, nombre) {
     if (!ref.current) return;
-    const tablaHtml = ref.current.outerHTML;
-    const dataType = "application/vnd.ms-excel";
-    const blob = new Blob([tablaHtml], { type: dataType });
+    let table = ref.current;
+    if (table.tagName && table.tagName.toLowerCase() !== "table") {
+      const possible = table.querySelector("table");
+      if (possible) table = possible;
+    }
+    if (!table) return;
+    const html = table.outerHTML;
+    const blob = new Blob([html], { type: "application/vnd.ms-excel" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -320,17 +484,23 @@ export default function ResultadosPorSedes() {
 
   function imprimir(ref) {
     if (!ref.current) return;
-    const contenido = ref.current.innerHTML;
+    let table = ref.current;
+    if (table.tagName && table.tagName.toLowerCase() !== "table") {
+      const possible = table.querySelector("table");
+      if (possible) table = possible;
+    }
+    if (!table) return;
+    const contenido = table.outerHTML;
     const ventana = window.open("", "", "width=900,height=650");
     ventana.document.write(`
       <html>
         <head>
           <title>Imprimir</title>
           <style>
-            body { font-family: sans-serif; padding: 10px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #666; padding: 5px; }
-            th { background: #26a626; color: white; }
+            body{font-family:sans-serif;padding:10px;}
+            table{border-collapse:collapse;width:100%;}
+            th,td{border:1px solid #666;padding:5px;}
+            th{background:#26a626;color:#fff;}
           </style>
         </head>
         <body>${contenido}</body>
@@ -341,37 +511,68 @@ export default function ResultadosPorSedes() {
     ventana.print();
   }
 
+  if (loadingGeneral)
+    return <LoadingSpinner />;
+
   return (
     <div style={styles.fondo}>
       <main style={styles.container}>
-        <div style={styles.topBar}>
-          <label htmlFor="select-reto" style={styles.label}>
-            Seleccione un reto:
-          </label>
-          <select
-            id="select-reto"
-            style={styles.select}
-            value={selectedRetoId}
-            onChange={(e) => setSelectedRetoId(e.target.value)}
+        <div style={barraStyles.container}>
+          <span style={barraStyles.userName}>
+            {nombreUsuario}
+            <span style={barraStyles.tipoUsuario}>
+              <span style={{ color: "#ffa500", fontWeight: "700", fontSize: 17, marginRight: 5 }}>★</span> {tipoUsuario}
+            </span>
+          </span>
+          <button
+            style={barraStyles.logoutBtn}
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+            onClick={() => setModalVisible(true)}
           >
-            <option value="">-- Seleccione un reto cerrado --</option>
-            {retos.map((r) => (
-              <option key={r._id} value={r._id}>
-                {aMayusculas(r.nombre)}
-              </option>
-            ))}
-          </select>
-          <button onClick={() => window.history.back()} style={styles.btnRegresar}>
+            <IconLogout />
+          </button>
+        </div>
+
+        <ModalConfirm
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onConfirm={() => {
+            setModalVisible(false);
+            localStorage.removeItem("token");
+            localStorage.removeItem("usuario");
+            window.location.href = "/";
+          }}
+        />
+
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+          <div style={{ maxWidth: 320, width: "100%" }}>
+            <label htmlFor="select-reto" style={styles.label}>Seleccione un reto:</label>
+            <select
+              id="select-reto"
+              style={styles.select}
+              value={selectedRetoId}
+              onChange={(e) => setSelectedRetoId(e.target.value)}
+            >
+              <option value="">-- Seleccione un reto cerrado --</option>
+              {retos.map((reto) => (
+                <option key={reto._id} value={reto._id}>{aMayusculas(reto.nombre)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+          <button style={styles.btnRegresar} onClick={() => window.history.back()}>
             ← Regresar
           </button>
         </div>
 
-        {/* Tabla detalle reto seleccionado */}
         {loadingDetalles ? (
           <LoadingSpinner />
         ) : selectedRetoId ? (
           <>
-            <div style={styles.botonesContainer}>
+            <div style={{ ...styles.botonesContainer, justifyContent: "center" }}>
               <button onClick={() => imprimir(reporteDetalleRef)} style={styles.botonAccion}>
                 🖨️ Imprimir
               </button>
@@ -399,17 +600,14 @@ export default function ResultadosPorSedes() {
                 </thead>
                 <tbody>
                   {puntuacion.map((item, idx) => (
-                    <tr
-                      key={item.salonId || idx}
-                      style={idx % 2 === 0 ? styles.rowEven : styles.rowOdd}
-                    >
+                    <tr key={item.salonId || idx} style={idx % 2 ? styles.rowOdd : styles.rowEven}>
                       <td style={styles.puestoCell}>{darMedalla(idx + 1)}</td>
                       <td style={styles.td}>{item.grado}</td>
                       <td style={styles.td}>{item.salon}</td>
                       <td style={styles.td}>{aMayusculas(item.jornada)}</td>
                       <td style={styles.td}>{aMayusculas(item.sede)}</td>
-                      <td style={styles.tdNumber}>{item.pesoLibras.toFixed(2)}</td>
-                      <td style={styles.tdNumber}>{item.puntos}</td>
+                      <td style={styles.tdRight}>{item.pesoLibras.toFixed(2)}</td>
+                      <td style={styles.tdRight}>{item.puntos}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -418,9 +616,8 @@ export default function ResultadosPorSedes() {
           </>
         ) : null}
 
-        {/* Tabla consolidado general */}
         <section style={{ marginTop: 40 }}>
-          <div style={styles.botonesContainer}>
+          <div style={{ ...styles.botonesContainer, justifyContent: "center" }}>
             <button onClick={() => imprimir(reporteConsolidadoRef)} style={styles.botonAccion}>
               🖨️ Imprimir
             </button>
@@ -433,6 +630,7 @@ export default function ResultadosPorSedes() {
           </div>
 
           <h2 style={styles.tabTitle}>Consolidado general (todos los retos)</h2>
+
           {loadingConsolidado ? (
             <LoadingSpinner />
           ) : (
@@ -455,16 +653,20 @@ export default function ResultadosPorSedes() {
                       </td>
                     </tr>
                   ) : (
-                    tablaConsolidado.map(({ key, sede, jornada, puntosTotales, librasTotales, posicion, medalla }) => (
+                    tablaConsolidado.map(({ key, sede, jornada, puntosTotales, librasTotales, posicion }) => (
                       <tr
                         key={key}
-                        style={posicion % 2 === 0 ? styles.rowEven : styles.rowOdd}
+                        style={posicion % 2 ? styles.rowOdd : styles.rowEven}
                       >
                         <td style={styles.puestoCell}>{darMedalla(posicion)}</td>
-                        <td style={{ ...styles.td, fontWeight: "bold" }}>{aMayusculas(sede)}</td>
-                        <td style={{ ...styles.td, fontWeight: "bold" }}>{aMayusculas(jornada)}</td>
-                        <td style={styles.tdNumber}>{puntosTotales}</td>
-                        <td style={styles.tdNumber}>{librasTotales.toFixed(2)}</td>
+                        <td style={{ ...styles.td, fontWeight: "bold" }}>
+                          {aMayusculas(sede)}
+                        </td>
+                        <td style={{ ...styles.td, fontWeight: "bold" }}>
+                          {aMayusculas(jornada)}
+                        </td>
+                        <td style={styles.tdRight}>{puntosTotales}</td>
+                        <td style={styles.tdRight}>{librasTotales.toFixed(2)}</td>
                       </tr>
                     ))
                   )}
@@ -483,38 +685,16 @@ const styles = {
     minHeight: "100vh",
     width: "100vw",
     background:
-      "linear-gradient(rgba(168,224,168,0.55), rgba(86,171,86,0.45)), url('/fondo-ambiental.jpg') no-repeat center center fixed",
+      "linear-gradient(90deg, #ceeeb6 20%, #87d626 90%), url('/fondo-ambiental.jpg') no-repeat center center fixed",
     backgroundSize: "cover",
     display: "flex",
     justifyContent: "center",
     alignItems: "flex-start",
     padding: 20,
   },
-  header: {
-    width: "100%",
-    maxWidth: 980,
-    display: "flex",
-    justifyContent: "flex-end",
-    padding: "12px 30px",
-    boxSizing: "border-box",
-  },
-  btnRegresar: {
-    padding: "10px 30px",
-    backgroundColor: "#27a627",
-    border: "none",
-    borderRadius: 25,
-    color: "white",
-    fontWeight: "700",
-    fontSize: 16,
-    cursor: "pointer",
-    boxShadow: "0 6px 12px rgba(39, 166, 39, 0.6)",
-    transition: "background-color 0.3s ease",
-    outline: "none",
-    userSelect: "none",
-  },
   container: {
-    width: "100%",
     maxWidth: 980,
+    width: "100%",
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     padding: 30,
@@ -528,118 +708,132 @@ const styles = {
     marginTop: 0,
     minHeight: "88vh",
   },
-  topBar: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 20,
-  },
-  titlePage: {
-    fontWeight: "700",
-    fontSize: 30,
-    textAlign: "center",
-    marginBottom: 16,
-    letterSpacing: 0.5,
-    color: "#258925",
-  },
   label: {
-    fontWeight: "700",
+    fontWeight: 700,
     fontSize: 18,
-    marginBottom: 0,
-    whiteSpace: "nowrap",
-    color: "#2a8f2a",
+    color: "#2f7c1f",
+    marginBottom: 8,
+    userSelect: "none",
+  },
+  selectWrapper: {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: 24,
   },
   select: {
-    padding: 12,
-    fontSize: 16,
-    borderRadius: 10,
-    border: "1px solid #8ac08a",
-    backgroundColor: "#e8f6e8",
-    width: 300,
-    maxWidth: "100%",
+    width: "100%",
+    maxWidth: 320,
+    padding: "12px 15px",
+    borderRadius: 18,
+    fontSize: 18,
+    border: "1px solid #afdb7d",
+    backgroundColor: "#d8edb4",
+    color: "#345a11",
+    textAlign: "center",
+    userSelect: "none",
+  },
+  btnRegresar: {
+    background: "#3a781d",
+    color: "white",
+    border: "none",
+    borderRadius: 22,
+    padding: "12px 24px",
+    fontSize: 17,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgb(60 120 20 / 0.7)",
+    userSelect: "none",
+    margin: "0 auto 30px",
+    minWidth: 140,
+  },
+  botonesContainer: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 20,
+    flexWrap: "wrap",
+    marginBottom: 20,
+  },
+  botonAccion: {
+    backgroundColor: "#3a781d",
+    color: "white",
+    border: "none",
+    borderRadius: 22,
+    padding: "12px 28px",
+    fontSize: 17,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgb(60 120 20 / 0.7)",
+    userSelect: "none",
+    whiteSpace: "nowrap",
   },
   tabTitle: {
-    fontWeight: "700",
+    fontWeight: 700,
     fontSize: 22,
-    color: "#2e8f2e",
+    color: "#2e6b1a",
     textAlign: "center",
   },
   tableWrap: {
     overflowX: "auto",
     borderRadius: 12,
-    boxShadow: "0 3px 12px rgb(35 140 35 / 30%)",
+    boxShadow: "0 0 14px rgba(86, 130, 50, 0.7)",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    fontSize: 14,
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  th: {
-    backgroundColor: "#cff1c0",
-    color: "#2b6c2b",
-    fontWeight: "700",
-    padding: "10px 14px",
-    border: "1px solid #91cc91",
-    textAlign: "left",
-    whiteSpace: "nowrap",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  td: {
-    padding: "10px 14px",
-    border: "1px solid #91cc91",
-    color: "#2d6d2d",
-    fontWeight: "600",
-  },
-  tdNumber: {
-    padding: "10px 14px",
-    border: "1px solid #91cc91",
-    textAlign: "right",
-    fontWeight: "700",
-    color: "#268026",
-  },
-  puestoCell: {
-    fontWeight: "700",
-    display: "flex",
-    flexWrap: "nowrap",
-    alignItems: "center",
-    gap: 4,
-    fontSize: 16,
-    color: "#2a8f2a",
-    justifyContent: "center",
-  },
-  rowEven: {
-    backgroundColor: "#e6f2e6",
-  },
-  rowOdd: {
-    backgroundColor: "#ddefdb",
-  },
-  botonesContainer: {
-    display: "flex",
-    justifyContent: "flex-start",
-    gap: 12,
-    paddingTop: 6,
-    paddingBottom: 6,
-  },
-  botonAccion: {
-    padding: "8px 20px",
-    backgroundColor: "#35a735",
-    border: "none",
-    borderRadius: 24,
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-    cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(38, 168, 38, 0.6)",
-    transition: "background-color 0.3s ease",
     userSelect: "none",
   },
-  loadingContainer: {
+  th: {
+    backgroundColor: "#b7da7e",
+    border: "1px solid #96b335",
+    padding: "10px 14px",
+    fontWeight: 700,
+    color: "#345715",
+    textAlign: "left",
+    whiteSpace: "nowrap",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  td: {
+    backgroundColor: "#e2f0c6",
+    border: "1px solid #96b335",
+    padding: "10px 14px",
+    fontWeight: 600,
+    color: "#386d2f",
+  },
+  tdRight: {
+    backgroundColor: "#e2f0c6",
+    border: "1px solid #96b335",
+    padding: "10px 14px",
+    fontWeight: 700,
+    color: "#3b7b1a",
+    textAlign: "right",
+    userSelect: "text",
+  },
+  puestoCell: {
+    fontWeight: 700,
     display: "flex",
     alignItems: "center",
+    gap: 6,
+    fontSize: 19,
     justifyContent: "center",
-    gap: 12,
-    padding: 20,
+    color: "#3a7b23",
+    userSelect: "none",
+  },
+  rowEven: {
+    backgroundColor: "#eaf4c7",
+  },
+  rowOdd: {
+    backgroundColor: "#c9deb1",
+  },
+  loadingContainer: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "column",
+    zIndex: 9999,
   },
 };

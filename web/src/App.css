@@ -36,3 +36,327 @@
     transform: rotate(360deg);
   }
 }
+
+.retoform-container {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 32px 32px 18px 32px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 25px rgba(14,197,134,0.25);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.retoform-title {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 2.6rem;
+  color: #119e8e;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 1px;
+  text-shadow: 0 3px 15px rgba(14,197,134,0.20);
+  margin-bottom: 24px;
+  margin-top: 8px;
+}
+
+.retoform-formgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  row-gap: 18px;
+}
+
+@media (max-width: 600px) {
+  .retoform-container {
+    padding: 12px 5vw 16px 5vw;
+    margin: 10px 0;
+    box-shadow: 0 3px 12px rgba(14,197,134,0.18);
+    width: 98vw;
+    max-width: 99vw;
+  }
+  .retoform-title {
+    font-size: 2rem;
+    margin-bottom: 16px;
+    margin-top: 2px;
+  }
+  .retoform-formgrid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+}
+
+.retoform-userbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  margin-top: 5px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .retoform-userbar {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    margin-top: 4px;
+  }
+}
+
+.retoform-userbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  margin-top: 5px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.retoform-logout-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 8px;
+  box-shadow: 0 2px 16px #e74c3c22;
+  transition: background 0.2s;
+  position: relative;
+  color: #e44848;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retoform-logout-btn:hover,
+.retoform-logout-btn:focus {
+  background: #ffe5e5;
+}
+
+.retoform-logout-btn .logout-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  background-color: #232323d9;
+  color: #fff;
+  text-align: center;
+  border-radius: 8px;
+  padding: 5px 12px;
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 105%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.retoform-logout-btn:hover .logout-tooltip,
+.retoform-logout-btn:focus .logout-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.retoform-modal-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(34, 49, 63, 0.32);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.retoform-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 26px 20px 26px;
+  min-width: 300px;
+  min-height: 90px;
+  box-shadow: 0 8px 40px 4px #4444;
+  text-align: center;
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: calc(100vw - 60px);
+}
+.retoform-modal h3 {
+  font-size: 22px;
+  margin: 0 0 14px 0;
+  color: #e74c3c;
+  font-weight: 900;
+}
+.retoform-modal-buttons {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+}
+.retoform-modal-btn {
+  padding: 10px 24px;
+  border-radius: 7px;
+  border: none;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  background: #11998e;
+  color: #fff;
+  box-shadow: 0 2px 12px #11998e30;
+  transition: background 0.2s;
+}
+.retoform-modal-btn.cancel {
+  background: #e74c3c;
+}
+@media (max-width: 600px) {
+  .retoform-userbar {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    margin-top: 4px;
+  }
+  .retoform-modal {
+    min-width: 0;
+    width: 99vw;
+    padding: 24px 8vw 18px 8vw;
+  }
+}
+
+.retos-flexbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .retos-flexbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+.retos-btn-dashboard {
+  border: none;
+  border-radius: 22px;
+  background: #ede7fe;
+  color: #6c63ff;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 8px 18px 8px 14px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 10px #6c63ff18;
+  transition: background 0.2s, color 0.2s;
+  gap: 7px;
+}
+.retos-btn-dashboard:hover {
+  background: #d1c4e9;
+  color: #473bc2;
+}
+
+.retos-btn-agregar {
+  border: none;
+  border-radius: 22px;
+  background: #11998e;
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  padding: 9px 22px 9px 15px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 15px #11998e44;
+  transition: background 0.2s;
+  gap: 8px;
+}
+.retos-btn-agregar:hover {
+  background: #17b69d;
+}
+
+.retos-title-icon {
+  vertical-align: -7px;
+  margin-right: 10px;
+}
+
+.retos-container-main {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (max-width: 800px) {
+  .retos-container-main {
+    padding: 0 4vw;
+  }
+}
+@media (max-width: 600px) {
+  .retos-container-main {
+    padding: 0 7px;
+  }
+}
+
+.retos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(290px,1fr));
+  gap: 18px;
+  width: 100%;
+}
+.reto-card {
+  background: #fafcff;
+  padding: 18px 16px 18px 16px;
+  border-radius: 18px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
+  display: flex;
+  flex-direction: column;
+  min-height: 210px;
+  transition: box-shadow 0.22s, transform 0.18s;
+  margin: 0 3px;
+}
+.reto-card:hover {
+  box-shadow: 0 14px 32px rgb(17 153 142 / 0.20);
+  transform: translateY(-7px) scale(1.025);
+  background: #ecfff1;
+}
+.reto-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+@media print {
+  .ocultar-en-impresion {
+    display: none !important;
+  }
+  table { page-break-inside: avoid; }
+}
+
+@media (max-width: 600px) {
+  .iconButtonsContainer {
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+  button[aria-label] svg {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  table {
+    font-size: 14px !important;
+  }
+  textarea {
+    font-size: 14px !important;
+  }
+}

@@ -14,7 +14,7 @@ function calcularEstado(fechaInicio, fechaCierre) {
   const hoy = new Date();
   const inicio = new Date(fechaInicio);
   const cierre = new Date(fechaCierre + "T23:59:59");
-  if (hoy < inicio) return "Pendiente";
+  if (hoy < inicio) return "Inicia Pronto";
   if (hoy > cierre) return "Cerrado";
   return "Activo";
 }

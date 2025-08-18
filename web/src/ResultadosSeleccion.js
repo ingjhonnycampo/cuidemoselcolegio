@@ -1,6 +1,123 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Barra Synergy para usuario
+function IconAvatar() {
+  return (
+    <svg height={56} width={56} viewBox="0 0 56 56" fill="none">
+      <circle cx={28} cy={22} r={14} fill="#119e8e" />
+      <ellipse cx={28} cy={39.5} rx={20} ry={10.5} fill="#eafcf7" />
+    </svg>
+  );
+}
+function IconStar() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#faab34">
+      <path d="M12 2l2.092 6.426H20.5l-5.204 3.783L17.181 20 12 15.549 6.819 20l1.885-7.791L3.5 8.426h6.408z"/>
+    </svg>
+  );
+}
+function IconLogout() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="19" stroke="#ffcacf" strokeWidth="2" fill="#fff"/>
+      <rect x="13" y="14" width="14" height="20" rx="6" stroke="#e74c3c" strokeWidth="2"/>
+      <path d="M32 24h7M37 29l4-5-4-5" stroke="#e74c3c" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function BarraUsuarioResultados({ usuario, onLogout }) {
+  if (!usuario) return null;
+  return (
+    <div style={barraStyles.fondoBarra}>
+      <div style={barraStyles.wrapAvatar}><IconAvatar /></div>
+      <div style={barraStyles.userData}>
+        <span style={barraStyles.nombre}>{usuario.nombre}</span>
+        {usuario.rol && (
+          <span style={barraStyles.rol}>
+            <IconStar />
+            <span style={{ fontStyle: "italic", color: "#e39216", marginLeft: 3, fontWeight: 600 }}>{usuario.rol}</span>
+          </span>
+        )}
+      </div>
+      <button
+        style={barraStyles.logoutBtn}
+        onClick={onLogout}
+        title="Cerrar sesión"
+        aria-label="Cerrar sesión"
+      >
+        <IconLogout />
+      </button>
+    </div>
+  );
+}
+const barraStyles = {
+  fondoBarra: {
+    width: "100%",
+    maxWidth: 900,
+    margin: "0 auto 30px auto",
+    background: "linear-gradient(90deg, #e0fefa 60%, #fffbe5 100%)",
+    boxShadow: "0 2px 22px #8eeacc44",
+    borderRadius: 30,
+    display: "flex",
+    alignItems: "center",
+    position: "relative",
+    minHeight: 72,
+    padding: "8px 40px 8px 18px",
+    transition: "box-shadow .2s",
+    boxSizing: "border-box",
+  },
+  wrapAvatar: {
+    marginRight: 15,
+    display: "flex",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  userData: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  nombre: {
+    fontWeight: 800,
+    color: "#0c978c",
+    fontSize: 18.5,
+    lineHeight: 1.14,
+    textShadow: "0 1px 0 #e0fcfa66",
+    letterSpacing: 0.33,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  rol: {
+    display: "flex",
+    alignItems: "center",
+    fontWeight: 700,
+    fontSize: 15.3,
+    color: "#e39216",
+    marginTop: 3,
+    marginLeft: 1,
+    gap: 2,
+  },
+  logoutBtn: {
+    position: "relative",
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    borderRadius: "50%",
+    transition: "background .17s",
+    boxShadow: "0 0 7px #e74c3c29",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 20,
+    flexShrink: 0,
+  }
+};
+
 const IconTitle = () => (
   <svg
     width={36}
@@ -94,10 +211,81 @@ const IconGeneral = ({ hovered }) => (
   </svg>
 );
 
+// Modal elegante para confirmar cierre
+function ModalConfirm({ visible, onClose, onConfirm }) {
+  if (!visible) return null;
+  return (
+    <div style={modalStyles.backdrop} role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+      <div style={modalStyles.modal}>
+        <h2 id="modalTitle" style={modalStyles.title}>¿Estás seguro que quieres cerrar sesión?</h2>
+        <div id="modalDesc" style={modalStyles.desc}>Se cerrará tu sesión actual.</div>
+        <div style={modalStyles.buttons}>
+          <button style={modalStyles.confirmBtn} onClick={onConfirm}>Sí, cerrar sesión</button>
+          <button style={modalStyles.cancelBtn} onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const modalStyles = {
+  backdrop: {
+    position: "fixed",
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10000,
+  },
+  modal: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 24,
+    maxWidth: 380,
+    width: "90%",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+    textAlign: "center",
+  },
+  title: {
+    marginBottom: 10,
+    color: "#2e7d32",
+  },
+  desc: {
+    marginBottom: 24,
+    color: "#555",
+  },
+  buttons: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  confirmBtn: {
+    flex: 1,
+    backgroundColor: "#2e7d32",
+    color: "#fff",
+    fontWeight: "700",
+    padding: "10px 0",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: "#ccc",
+    color: "#444",
+    fontWeight: "700",
+    padding: "10px 0",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+  },
+};
+
 export default function ResultadosMenu() {
   const [hoveredBtn, setHoveredBtn] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const navigate = useNavigate();
-
   const usuario = useMemo(() => {
     const u = localStorage.getItem("usuario");
     return u ? JSON.parse(u) : null;
@@ -105,24 +293,25 @@ export default function ResultadosMenu() {
 
   const handleMouseEnter = (btn) => setHoveredBtn(btn);
   const handleMouseLeave = () => setHoveredBtn(null);
-
-  const handleNavigate = (path) => {
-    navigate(path);
+  const handleNavigate = (path) => navigate(path);
+  const handleLogoutClick = () => setModalVisible(true);
+  const handleConfirmLogout = () => {
+    setModalVisible(false);
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    navigate("/");
   };
+  const handleCancelLogout = () => setModalVisible(false);
 
   return (
     <div style={styles.fondo}>
       <div style={styles.container}>
+        <BarraUsuarioResultados usuario={usuario} onLogout={handleLogoutClick} />
         <h1 style={styles.pageTitle}>
           <IconTitle />
           EcoRetos - Resultados
         </h1>
-        {usuario && (
-          <p style={styles.userInfo}>
-            Usuario: {usuario.nombre} | Rol: {usuario.rol || "Usuario"}
-          </p>
-        )}
-        <div style={styles.optionsRow}>
+        <div style={styles.optionsRow} className="resultados-eco-row">
           <button
             style={{
               ...styles.optionCard,
@@ -140,7 +329,6 @@ export default function ResultadosMenu() {
             <IconRetos hovered={hoveredBtn === "porRetos"} />
             <span style={styles.optionLabel}>Resultados por Retos</span>
           </button>
-
           <button
             style={{
               ...styles.optionCard,
@@ -158,8 +346,6 @@ export default function ResultadosMenu() {
             <IconCursos hovered={hoveredBtn === "porCursos"} />
             <span style={styles.optionLabel}>Desempeño por Cursos</span>
           </button>
-
-          {/* NUEVO BOTÓN "Desempeño por Sedes" colocado ANTES de "Resultados Generales" */}
           <button
             style={{
               ...styles.optionCard,
@@ -177,7 +363,6 @@ export default function ResultadosMenu() {
             <IconSedes hovered={hoveredBtn === "porSedes"} />
             <span style={styles.optionLabel}>Desempeño por Sedes</span>
           </button>
-
           <button
             style={{
               ...styles.optionCard,
@@ -200,6 +385,40 @@ export default function ResultadosMenu() {
           ← Regresar
         </button>
       </div>
+      <ModalConfirm visible={modalVisible} onClose={handleCancelLogout} onConfirm={handleConfirmLogout} />
+      <style>{`
+        @media (max-width: 650px) {
+          .resultados-eco-row {
+            flex-direction: column !important;
+            gap: 20px !important;
+            align-items: center !important;
+            justify-content: center !important;
+            display: flex !important;
+          }
+          button[style*="optionCard"] {
+            width: 98vw !important;
+            min-height: 220px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+          h1 {
+            text-align: center !important;
+          }
+        }
+        @media (max-width: 900px) {
+          .resultados-eco-row {
+            flex-direction: column !important;
+            gap: 20px !important;
+            align-items: center !important;
+          }
+          button[style*="optionCard"] {
+            width: 98vw !important;
+            min-height: 220px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -208,66 +427,61 @@ const styles = {
   fondo: {
     minHeight: "100vh",
     width: "100vw",
-    background:
-      "linear-gradient(rgba(168,224,168,0.55), rgba(86,171,86,0.45)), url('/fondo-ambiental.jpg') no-repeat center center fixed",
+    background: "linear-gradient(rgba(168,224,168,0.55), rgba(86,171,86,0.45)), url('/fondo-ambiental.jpg') no-repeat center center fixed",
     backgroundSize: "cover",
     display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-start",
+    flexDirection: "column",
+    alignItems: "center",
     padding: 20,
   },
   container: {
     width: "100%",
-    maxWidth: 1000,
-    backgroundColor: "rgba(255, 255, 255, 0.97)",
+    maxWidth: 900,
+    backgroundColor: "#fff",
     borderRadius: 20,
     padding: 40,
-    boxShadow: "0 0 30px 0 rgba(60, 173, 60, 0.65)",
+    boxShadow: "0 10px 60px rgb(152 196 156 / 0.45)",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    color: "#1b3a1b",
+    color: "#1b5d3b",
     display: "flex",
     flexDirection: "column",
-    gap: 30,
+    gap: 25,
     position: "relative",
   },
   pageTitle: {
     fontSize: 36,
     fontWeight: 700,
-    color: "#2e7d32",
+    color: "#1b5d3b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
   },
-  userInfo: {
-    fontSize: 18,
-    textAlign: "center",
-    fontWeight: 600,
-    color: "#555",
-  },
   optionsRow: {
     display: "flex",
-    justifyContent: "space-evenly",
     flexWrap: "wrap",
-    gap: 30,
+    gap: 20,
+    justifyContent: "center",
   },
   optionCard: {
     borderRadius: 24,
     border: "3px solid",
     width: 270,
-    height: 260,
+    height: 220,
     cursor: "pointer",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20,
     fontWeight: 700,
-    fontSize: 22,
+    fontSize: 19,
     textTransform: "uppercase",
     userSelect: "none",
-    transition: "all 0.3s ease",
-    backgroundColor: "#f7fff9",
+    padding: 10,
+    background: "#d1f7e6",
+    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: "auto",
+    marginRight: "auto",
   },
   optionLabel: {
     textAlign: "center",
@@ -275,15 +489,14 @@ const styles = {
   pageReturnButton: {
     marginTop: 40,
     padding: "10px 36px",
-    backgroundColor: "#2e7d32",
+    backgroundColor: "#4caf50",
     border: "none",
-    borderRadius: 30,
+    borderRadius: 60,
     color: "white",
-    fontWeight: 800,
+    fontWeight: 700,
     fontSize: 18,
     cursor: "pointer",
     alignSelf: "center",
-    boxShadow: "0 5px 15px rgba(0,0,0,0.25)",
-    transition: "background-color 0.3s ease",
+    boxShadow: "0 6px 20px rgb(26 69 14 / 0.34)",
   },
 };
