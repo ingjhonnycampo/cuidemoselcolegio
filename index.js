@@ -26,6 +26,8 @@ app.use('/api/usuarios', usuariosRouter);
 const recoleccionesRouter = require('./routes/recolecciones');
 app.use('/api/recolecciones', recoleccionesRouter);
 // -----------------------------------------------------------------------
+const ventasRouter = require('./routes/ventas');
+app.use('/api/ventas', ventasRouter);
 
 // PORT y conexión a base de datos
 const PORT = process.env.PORT || 5000;
