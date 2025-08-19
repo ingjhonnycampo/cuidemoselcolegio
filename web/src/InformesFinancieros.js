@@ -560,6 +560,7 @@ function formatFechaHora(dateStr) {
 
 const materiales = [
   "Papel y Cartón",
+  "Tapas botellas plásticas",
   "Botellas Plásticas",
   "Latas de Aluminio",
   "Vidrio (Botellas y Frascos)",
